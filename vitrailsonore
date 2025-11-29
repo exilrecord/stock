@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitrail Sonore - Synth Final avec LPF</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neon-blue: #00f7ff;
+            --neon-blue-dim: #005a5e;
+            --dark-metal: #222;
+            /* Couleurs pour les ondes */
+            --wave-sine: rgba(50, 255, 50, 0.5);    /* Vert */
+            --wave-square: rgba(0, 255, 255, 0.5);  /* Cyan */
+            --wave-triangle: rgba(255, 255, 0, 0.5); /* Jaune */
+            --wave-saw: rgba(255, 0, 255, 0.5);    /* Magenta */
+            --wave-fm: rgba(255, 50, 50, 0.6);      /* Rouge */
+        }
+
+        body {
+            background-color: #111;
+            color: #ddd;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Cinzel', serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- LAYOUT --- */
+        #main-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            height: 85vh;
+        }
+
+        #stage-area {
+            flex: 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+
+        #lightbox {
+            width: 600px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+            position: relative;
+            border-radius: 4px;
+        }
+        
+        #lightbox::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        #lightbox::after {
+            content: 'X: Fréquence | Y: Volume';
+            position: absolute;
+            bottom: -30px; left: 50%;
+            transform: translateX(-50%);
+            color: #555;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+
+        #palette-area {
+            flex: 1;
+            background: rgba(10, 10, 10, 0.8);
+            border-left: 1px solid #333;
+            position: relative;
+        }
+
+        /* --- PIÈCES (SHARDS) --- */
+        .shard {
+            position: absolute;
+            cursor: grab;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+            mix-blend-mode: screen; 
+        }
+        
+        .shard.active-shard {
+            box-shadow: 0 0 25px currentColor; 
+            border: 1px solid rgba(255,255,255,0.8);
+            z-index: 50;
+        }
+
+        /* --- CONTROLS AREA --- */
+        #controls-area {
+            height: 15vh;
+            background: #080808;
+            border-top: 1px solid #222;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 100;
+        }
+
+        .control-group-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+        
+        .control-group-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* Bouton Reset */
+        #reset-btn {
+            background: transparent;
+            color: #ccc;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+            font-family: 'Cinzel', serif;
+        }
+        #reset-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        /* --- BOUTON POWER LUMINEUX --- */
+        #power-btn {
+            background: var(--dark-metal);
+            border: 3px solid #333;
+            border-radius: 50%;
+            width: 70px; height: 70px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.3s ease-in-out;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.8), 0 2px 3px rgba(255,255,255,0.05);
+            padding: 0; position: relative; overflow: hidden;
+        }
+        #power-btn svg { fill: #444; width: 36px; height: 36px; transition: all 0.3s ease-in-out; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.1)); }
+        #power-btn.is-on {
+            background: radial-gradient(circle at center, var(--neon-blue) 0%, var(--neon-blue-dim) 70%);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 25px var(--neon-blue), 0 0 50px var(--neon-blue-dim), inset 0 0 15px rgba(255,255,255,0.5);
+        }
+        #power-btn.is-on svg { fill: #fff; filter: drop-shadow(0 0 8px var(--neon-blue)); }
+        #power-btn.is-on::after {
+            content: ''; position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
+            background: radial-gradient(circle, transparent 40%, var(--neon-blue) 100%);
+            opacity: 0.2; animation: pulse-light 2s infinite alternate;
+        }
+        @keyframes pulse-light {
+            from { opacity: 0.1; transform: scale(1); }
+            to { opacity: 0.3; transform: scale(1.1); }
+        }
+
+        /* --- POTENTIOMÈTRES (Sliders) --- */
+        .volume-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .volume-label {
+            font-size: 0.7rem;
+            color: #888;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        input[type=range] {
+            width: 100px;
+            cursor: pointer;
+            accent-color: var(--neon-blue);
+        }
+
+        /* Légende (Avec couleur d'identification) */
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.75rem;
+            color: #ccc;
+            flex-direction: column;
+            padding: 5px 10px;
+            border-left: 1px solid #222;
+        }
+        .legend span { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            font-weight: 400;
+        }
+        .dot { 
+            width: 8px; 
+            height: 8px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            border: 1px solid #777;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="main-container">
+        <div id="stage-area">
+            <div id="lightbox"></div>
+        </div>
+        <div id="palette-area"></div>
+    </div>
+
+    <div id="controls-area">
+        <div class="control-group-left">
+            <button id="power-btn" aria-label="Allumer/Éteindre le son">
+                <svg viewBox="0 0 24 24">
+                    <path d="M16.56,5.44L15.11,6.89C16.84,8.61 18,11.02 18,13.5A6,6 0 0,1 12,19.5A6,6 0 0,1 6,13.5C6,11.02 7.16,8.61 8.89,6.89L7.44,5.44C5.36,7.5 4,10.33 4,13.5A8,8 0 0,0 12,21A8,8 0 0,0 20,13.5C20,10.33 18.64,7.5 16.56,5.44M13,3H11V13H13V3Z" />
+                </svg>
+            </button>
+            
+            <button id="reset-btn">Réinitialiser</button>
+
+            <div class="volume-control">
+                <label for="master-vol" class="volume-label">Volume</label>
+                <input type="range" id="master-vol" min="0" max="1" step="0.01" value="0.4">
+            </div>
+
+            <div class="volume-control">
+                <label for="tuning-octave" class="volume-label">Tuning</label>
+                <input type="range" id="tuning-octave" min="0.5" max="2.0" step="0.01" value="1.0">
+            </div>
+
+            <div class="volume-control">
+                <label for="lpf-freq" class="volume-label">Coupe Hautes Fréq.</label>
+                <input type="range" id="lpf-freq" min="20" max="10000" step="1" value="10000">
+            </div>
+
+        </div>
+        
+        <div class="legend">
+            <p style="font-size:0.8rem; margin:0 0 5px 0; color:#aaa; font-weight:700;">Types d'Ondes / Identification</p>
+            <span><div class="dot" style="background: var(--wave-square);"></div> Bleu (Carré)</span>
+            <span><div class="dot" style="background: var(--wave-sine);"></div> Vert (Sinus)</span>
+            <span><div class="dot" style="background: var(--wave-triangle);"></div> Jaune (Triangle)</span>
+            <span><div class="dot" style="background: var(--wave-saw);"></div> Magenta (Dent de Scie)</span>
+            <span><div class="dot" style="background: var(--wave-fm);"></div> Rouge (FM Bizarre)</span>
+        </div>
+    </div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        
+        let masterGain;
+        let lpfFilter; // NOUVEAU
+        let compressor;
+        let delayNode;
+        let reverbNode;
+        let reverbGain; // Reste pour le volume Wet fixe
+
+        const powerBtn = document.getElementById('power-btn');
+        const volSlider = document.getElementById('master-vol');
+        const tuningSlider = document.getElementById('tuning-octave');
+        const lpfSlider = document.getElementById('lpf-freq'); // NOUVEAU
+        const resetButton = document.getElementById('reset-btn');
+        let isAudioOn = false;
+
+        const shardsList = [];
+        
+        const colorConfig = {
+            blue:   { color: 'rgba(0, 255, 255, 0.5)', type: 'square' }, 
+            green:  { color: 'rgba(50, 255, 50, 0.5)', type: 'sine' },
+            yellow: { color: 'rgba(255, 255, 0, 0.5)', type: 'triangle' },
+            magenta: { color: 'rgba(255, 0, 255, 0.5)', type: 'sawtooth' }, 
+            red:    { color: 'rgba(255, 50, 50, 0.6)', type: 'custom' }
+        };
+        const colors = ['blue', 'green', 'yellow', 'magenta', 'red']; 
+
+
+        // --- 1. CONFIGURATION AUDIO MASTER ---
+
+        async function initAudioEngine() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+
+                // 1. Gain Principal (Volume)
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = parseFloat(volSlider.value); 
+
+                // 2. Filtre Passe-Bas (LPF) - NOUVEAU
+                lpfFilter = audioCtx.createBiquadFilter();
+                lpfFilter.type = 'lowpass';
+                // La fréquence est initialisée sur la valeur max du slider (10000 Hz)
+                lpfFilter.frequency.value = parseFloat(lpfSlider.value); 
+                lpfFilter.Q.value = 1; // Valeur Q par défaut
+
+                // 3. Compresseur
+                compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.value = -20;
+                compressor.ratio.value = 12;
+
+                // 4. Délai
+                delayNode = audioCtx.createDelay();
+                delayNode.delayTime.value = 0.4;
+                const delayFeedback = audioCtx.createGain();
+                delayFeedback.gain.value = 0.4;
+                delayNode.connect(delayFeedback);
+                delayFeedback.connect(delayNode);
+
+                // 5. Réverbération (Convolver)
+                reverbNode = audioCtx.createConvolver();
+                reverbNode.buffer = await createReverbBuffer();
+                
+                // 6. Gain Reverb Wet (Fixé à 0.8)
+                reverbGain = audioCtx.createGain();
+                reverbGain.gain.value = 0.8; 
+
+                // --- ROUTAGE MIS À JOUR ---
+                // Les sources vont vers masterGain.
+                // masterGain se divise en 3 : Dry, Delay, Reverb.
+                // Les trois branches convergent vers le LPF.
+                // LPF va vers Compressor, qui va vers la sortie.
+
+                // Branche Dry (Principal)
+                masterGain.connect(lpfFilter);
+                
+                // Branche Delay
+                masterGain.connect(delayNode);
+                delayNode.connect(lpfFilter);
+
+                // Branche Reverb
+                masterGain.connect(reverbNode);
+                reverbNode.connect(reverbGain);
+                reverbGain.connect(lpfFilter); // Reverb wet entre dans le filtre
+
+                // Final
+                lpfFilter.connect(compressor);
+                compressor.connect(audioCtx.destination);
+            }
+        }
+
+        async function createReverbBuffer() {
+            let length = audioCtx.sampleRate * 4;
+            let decay = 3.0;
+            let buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+            for (let c = 0; c < 2; c++) {
+                let d = buffer.getChannelData(c);
+                for (let i = 0; i < length; i++) {
+                    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+                }
+            }
+            return buffer;
+        }
+
+        // --- GESTION DES CONTROLES ---
+
+        powerBtn.addEventListener('click', async () => {
+            if (!audioCtx) await initAudioEngine();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+                isAudioOn = true;
+                powerBtn.classList.add('is-on');
+            } else {
+                await audioCtx.suspend();
+                isAudioOn = false;
+                powerBtn.classList.remove('is-on');
+            }
+        });
+
+        volSlider.addEventListener('input', (e) => {
+            if(masterGain) {
+                masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
+            }
+        });
+        
+        // NOUVEAU : Contrôle du filtre passe-bas
+        lpfSlider.addEventListener('input', (e) => {
+            if(lpfFilter) {
+                const freq = parseFloat(e.target.value);
+                // Utilisation d'une petite rampe pour un changement plus fluide
+                lpfFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
+            }
+        });
+        
+        // Le slider reverb a été retiré, le gain reverbGain est fixé à 0.8.
+        
+        resetButton.addEventListener('click', () => {
+            shardsList.forEach(shard => shard.resetPosition());
+        });
+
+
+        // --- 2. LOGIQUE DES PIÈCES (INCHANGÉE) ---
+
+        const palette = document.getElementById('palette-area');
+        const lightbox = document.getElementById('lightbox');
+
+
+        class SynthShard {
+            constructor(colorType) {
+                this.colorType = colorType;
+                this.config = colorConfig[colorType];
+                this.element = document.createElement('div');
+                this.width = Math.random() * 40 + 50; 
+                this.height = Math.random() * 40 + 50;
+                
+                this.osc = null;
+                this.modulator = null;
+                this.gain = null;
+                this.isPlaying = false;
+
+                this.initVisuals();
+                this.initDrag();
+                this.resetPosition(true);
+            }
+
+            initVisuals() {
+                this.element.classList.add('shard');
+                this.element.style.width = this.width + 'px';
+                this.element.style.height = this.height + 'px';
+                
+                this.element.style.backgroundColor = this.config.color; 
+                this.element.style.color = this.config.color; 
+
+                const pts = [];
+                const numPoints = 4 + Math.floor(Math.random() * 4);
+                for(let i=0; i<numPoints; i++) {
+                    const angle = (i / numPoints) * Math.PI * 2;
+                    const r = 30 + Math.random() * 20;
+                    const x = 50 + Math.cos(angle) * r;
+                    const y = 50 + Math.sin(angle) * r;
+                    pts.push(`${x}% ${y}%`);
+                }
+                this.element.style.clipPath = `polygon(${pts.join(', ')})`;
+                document.body.appendChild(this.element);
+            }
+
+            resetPosition(initial = false) {
+                const rect = palette.getBoundingClientRect();
+                const x = rect.left + Math.random() * (rect.width - 80);
+                const y = rect.top + Math.random() * (rect.height - 80);
+                this.element.style.left = x + 'px';
+                this.element.style.top = y + 'px';
+                if (!initial) this.stopSound();
+            }
+
+            startSound() {
+                if(this.isPlaying || !audioCtx || !isAudioOn) return;
+
+                this.gain = audioCtx.createGain();
+                this.gain.gain.value = 0;
+
+                if (this.colorType === 'red') {
+                    this.osc = audioCtx.createOscillator();
+                    this.osc.type = 'sawtooth';
+                    this.modulator = audioCtx.createOscillator();
+                    this.modulator.type = 'square';
+                    this.modulator.frequency.value = 50;
+                    const modGain = audioCtx.createGain();
+                    modGain.gain.value = 500;
+                    this.modulator.connect(modGain);
+                    modGain.connect(this.osc.frequency);
+                    this.modulator.start();
+                } else {
+                    this.osc = audioCtx.createOscillator();
+                    this.osc.type = this.config.type;
+                }
+
+                this.osc.connect(this.gain);
+                this.gain.connect(masterGain);
+
+                this.osc.start();
+                this.isPlaying = true;
+                this.element.classList.add('active-shard');
+            }
+
+            updateAudio(relX, relY) {
+                if(!this.isPlaying) return;
+                const now = audioCtx.currentTime;
+
+                // Y = Volume
+                let vol = relY * relY; 
+                if(this.colorType === 'blue') vol *= 0.6; 
+                this.gain.gain.setTargetAtTime(vol, now, 0.1);
+
+                // X = Fréquence
+                const minFreq = 100;
+                const maxFreq = 1000;
+                
+                const tuningFactor = parseFloat(tuningSlider.value);
+
+                const baseFrequency = minFreq + (relX * (maxFreq - minFreq));
+                const finalFrequency = baseFrequency * tuningFactor;
+
+                this.osc.frequency.setTargetAtTime(finalFrequency, now, 0.1);
+
+                if (this.colorType === 'red' && this.modulator) {
+                    this.modulator.frequency.setTargetAtTime(relY * 100, now, 0.1);
+                }
+            }
+
+            stopSound() {
+                if(!this.isPlaying) return;
+                const now = audioCtx.currentTime;
+                this.gain.gain.setTargetAtTime(0, now, 0.2);
+                if(this.osc) this.osc.stop(now + 0.3);
+                if(this.modulator) this.modulator.stop(now + 0.3);
+                setTimeout(() => {
+                    this.isPlaying = false;
+                    this.element.classList.remove('active-shard');
+                    this.osc = null;
+                }, 350);
+            }
+
+            // Drag and Drop (inchangé)
+            initDrag() {
+                let isDragging = false;
+                let offset = {x:0, y:0};
+                this.element.addEventListener('mousedown', (e) => {
+                    if(e.button !== 0) return;
+                    isDragging = true;
+                    const b = this.element.getBoundingClientRect();
+                    offset = { x: e.clientX - b.left, y: e.clientY - b.top };
+                });
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    this.element.style.left = (e.clientX - offset.x) + 'px';
+                    this.element.style.top = (e.clientY - offset.y) + 'px';
+                    this.checkZone();
+                });
+                window.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    this.checkZone();
+                });
+            }
+
+            checkZone() {
+                const box = lightbox.getBoundingClientRect();
+                const shard = this.element.getBoundingClientRect();
+                const cx = shard.left + shard.width/2;
+                const cy = shard.top + shard.height/2;
+                const inside = cx > box.left && cx < box.right && cy > box.top && cy < box.bottom;
+
+                if (inside && isAudioOn) {
+                    if (!this.isPlaying) this.startSound();
+                    const rx = (cx - box.left) / box.width;
+                    const ry = 1 - ((cy - box.top) / box.height);
+                    this.updateAudio(rx, Math.max(0, Math.min(1, ry)));
+                } else {
+                    if (this.isPlaying) this.stopSound();
+                }
+            }
+        }
+
+        window.onload = () => {
+            colors.forEach(c => {
+                for(let i=0; i<8; i++) shardsList.push(new SynthShard(c));
+            });
+        };
+
+    </script>
+</body>
+</html>
