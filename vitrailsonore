@@ -3,238 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vitrail Sonore Mobile - Synth Final</title>
+    <title>Vitrail Sonore Mobile V2</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
             --neon-blue: #00f7ff;
             --neon-blue-dim: #005a5e;
-            --dark-metal: #222;
-            --wave-sine: rgba(50, 255, 50, 0.5);
-            --wave-square: rgba(0, 255, 255, 0.5);
-            --wave-triangle: rgba(255, 255, 0, 0.5);
-            --wave-saw: rgba(255, 0, 255, 0.5);
-            --wave-fm: rgba(255, 50, 50, 0.6);
+            --dark-metal: #1a1a1a;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent; /* Enlève le flash gris au tap sur mobile */
         }
 
         body {
-            background-color: #111;
+            background-color: #000;
             color: #ddd;
             margin: 0;
             height: 100vh;
+            width: 100vw;
             display: flex;
             flex-direction: column;
             font-family: 'Cinzel', serif;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none; /* Safari mobile */
-            touch-action: none; /* Empêche les gestes natifs du navigateur */
+            overflow: hidden; /* Empêche le scroll global */
+            touch-action: none; /* Bloque les gestes natifs (zoom/pan) pour toute l'app */
         }
 
-        /* --- LAYOUT --- */
+        /* --- ZONE HAUTE : LE VITRAIL --- */
         #main-container {
+            flex: 1; /* Prend tout l'espace disponible */
             display: flex;
-            flex: 1;
-            width: 100%;
-            height: 80vh; /* Un peu moins pour laisser place aux contrôles */
+            flex-direction: column;
             position: relative;
+            background: radial-gradient(circle at center, #222 0%, #000 100%);
         }
 
         #stage-area {
-            flex: 3;
+            flex: 1;
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
             overflow: hidden;
-            position: relative;
         }
 
-        /* LIGHTBOX RESPONSIVE */
+        /* La boîte lumineuse (Zone active) */
         #lightbox {
-            width: 80vmin; /* S'adapte au plus petit côté de l'écran */
-            height: 80vmin;
-            max-width: 600px;
-            max-height: 600px;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+            width: 85vmin; /* Responsive carré */
+            height: 85vmin;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
             position: relative;
-            border-radius: 4px;
-        }
-        
-        #lightbox::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
+            z-index: 0; /* Derrière les shards */
         }
 
         #lightbox::after {
-            content: 'X: Fréquence | Y: Volume';
+            content: 'ZONE SONORE';
             position: absolute;
-            bottom: -25px; left: 50%;
-            transform: translateX(-50%);
-            color: #555;
-            font-size: 0.7rem;
-            letter-spacing: 1px;
-            white-space: nowrap;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.1);
+            font-size: 2rem;
+            pointer-events: none;
         }
 
+        /* Zone de rangement (Palette) */
         #palette-area {
-            flex: 1;
-            background: rgba(10, 10, 10, 0.8);
-            border-left: 1px solid #333;
+            height: 80px;
+            background: #111;
+            border-top: 1px solid #333;
             position: relative;
-            overflow: hidden;
+            z-index: 10;
         }
 
-        /* --- PIÈCES (SHARDS) --- */
+        /* --- LES PIÈCES (SHARDS) --- */
         .shard {
             position: absolute;
+            z-index: 100; /* Toujours au dessus */
+            /* touch-action: none est CRUCIAL pour que le drag fonctionne bien sur Android/iOS */
+            touch-action: none; 
             cursor: grab;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
             transition: transform 0.1s;
-            mix-blend-mode: screen;
-            touch-action: none; /* Crucial pour mobile : empêche le scroll */
         }
-        
+
         .shard.active-shard {
-            box-shadow: 0 0 25px currentColor; 
-            border: 1px solid rgba(255,255,255,0.8);
-            z-index: 50;
+            filter: drop-shadow(0 0 15px currentColor);
+            z-index: 200;
         }
 
-        /* --- CONTROLS AREA --- */
+        /* --- ZONE BASSE : CONTRÔLES --- */
         #controls-area {
-            height: 20vh;
+            height: auto;
+            min-height: 140px;
             background: #080808;
-            border-top: 1px solid #222;
+            border-top: 2px solid #333;
+            padding: 10px;
             display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 100;
-            overflow-x: auto; /* Permet de scroller les contrôles si l'écran est petit */
+            z-index: 300; /* Au dessus de tout */
         }
 
-        .control-group-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: nowrap;
-        }
-
-        /* Bouton Reset */
-        #reset-btn {
-            background: transparent;
-            color: #ccc;
-            border: 1px solid #444;
-            padding: 8px 10px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-family: 'Cinzel', serif;
-        }
-
-        /* --- BOUTON POWER LUMINEUX --- */
+        /* Bouton Power */
         #power-btn {
-            background: var(--dark-metal);
-            border: 3px solid #333;
+            width: 70px; height: 70px;
             border-radius: 50%;
-            width: 60px; height: 60px;
-            flex-shrink: 0; /* Empêche le bouton de s'écraser */
+            background: #222;
+            border: 2px solid #555;
+            color: #555;
+            font-weight: bold;
             display: flex; justify-content: center; align-items: center;
-            cursor: pointer; transition: all 0.3s ease-in-out;
-            box-shadow: inset 0 3px 8px rgba(0,0,0,0.8), 0 2px 3px rgba(255,255,255,0.05);
-            padding: 0; position: relative; overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: inset 0 0 10px #000;
+            transition: all 0.3s;
         }
-        #power-btn svg { fill: #444; width: 30px; height: 30px; transition: all 0.3s ease-in-out; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.1)); }
         #power-btn.is-on {
-            background: radial-gradient(circle at center, var(--neon-blue) 0%, var(--neon-blue-dim) 70%);
+            background: #000;
             border-color: var(--neon-blue);
-            box-shadow: 0 0 25px var(--neon-blue), 0 0 50px var(--neon-blue-dim), inset 0 0 15px rgba(255,255,255,0.5);
+            color: var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
         }
-        #power-btn.is-on svg { fill: #fff; filter: drop-shadow(0 0 8px var(--neon-blue)); }
 
-        /* --- POTENTIOMÈTRES --- */
-        .volume-control {
+        /* Sliders */
+        .slider-group {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
-            min-width: 80px;
+            margin: 5px;
+            width: 30%; /* 3 sliders par ligne approx */
         }
-        .volume-label {
-            font-size: 0.6rem;
-            color: #888;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            text-align: center;
+        .slider-label {
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+            color: #aaa;
         }
         input[type=range] {
-            width: 80px;
-            cursor: pointer;
+            width: 100%;
+            height: 20px; /* Plus haut pour le doigt */
             accent-color: var(--neon-blue);
         }
 
-        /* Légende */
-        .legend {
-            display: none; /* Caché sur mobile par défaut pour gagner de la place */
-            gap: 10px;
-            font-size: 0.7rem;
-            color: #ccc;
-            flex-direction: column;
-            padding: 5px 10px;
-            border-left: 1px solid #222;
-        }
-        .legend span { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #777; }
-
-        /* --- MEDIA QUERIES MOBILE --- */
-        @media (min-width: 769px) {
-            .legend { display: flex; }
+        #reset-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-family: 'Cinzel', serif;
+            margin-top: 5px;
         }
 
-        @media (max-width: 768px) {
-            #main-container {
-                flex-direction: column; /* Vertical layout */
-            }
-            #stage-area {
-                flex: 2; /* Plus d'espace pour le vitrail */
-                width: 100%;
-            }
-            #palette-area {
-                flex: 1; /* Zone de stockage en bas */
-                width: 100%;
-                border-left: none;
-                border-top: 1px solid #333;
-                background: #0f0f0f;
-            }
-            #controls-area {
-                padding: 10px;
-                height: auto;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .control-group-left {
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 15px;
-            }
-            #reset-btn {
-                padding: 10px;
-                font-size: 0.8rem;
-            }
-        }
     </style>
 </head>
 <body>
@@ -243,381 +168,276 @@
         <div id="stage-area">
             <div id="lightbox"></div>
         </div>
-        <div id="palette-area">
-            </div>
+        <div id="palette-area"></div>
     </div>
 
     <div id="controls-area">
-        <div class="control-group-left">
-            <button id="power-btn" aria-label="Allumer/Éteindre le son">
-                <svg viewBox="0 0 24 24">
-                    <path d="M16.56,5.44L15.11,6.89C16.84,8.61 18,11.02 18,13.5A6,6 0 0,1 12,19.5A6,6 0 0,1 6,13.5C6,11.02 7.16,8.61 8.89,6.89L7.44,5.44C5.36,7.5 4,10.33 4,13.5A8,8 0 0,0 12,21A8,8 0 0,0 20,13.5C20,10.33 18.64,7.5 16.56,5.44M13,3H11V13H13V3Z" />
-                </svg>
-            </button>
-            
-            <button id="reset-btn">Reset</button>
-
-            <div class="volume-control">
-                <label for="master-vol" class="volume-label">Vol</label>
-                <input type="range" id="master-vol" min="0" max="1" step="0.01" value="0.4">
-            </div>
-
-            <div class="volume-control">
-                <label for="tuning-octave" class="volume-label">Tune</label>
-                <input type="range" id="tuning-octave" min="0.5" max="2.0" step="0.01" value="1.0">
-            </div>
-
-            <div class="volume-control">
-                <label for="lpf-freq" class="volume-label">Filtre</label>
-                <input type="range" id="lpf-freq" min="20" max="10000" step="1" value="10000">
-            </div>
+        <div id="power-btn">OFF</div>
+        
+        <div class="slider-group">
+            <label class="slider-label">Volume</label>
+            <input type="range" id="master-vol" min="0" max="1" step="0.01" value="0.5">
         </div>
         
-        <div class="legend">
-            <p style="margin:0 0 5px 0; font-weight:700; color:#fff;">Légende</p>
-            <span><div class="dot" style="background: var(--wave-square);"></div> Carré</span>
-            <span><div class="dot" style="background: var(--wave-sine);"></div> Sinus</span>
-            <span><div class="dot" style="background: var(--wave-triangle);"></div> Triangle</span>
-            <span><div class="dot" style="background: var(--wave-saw);"></div> Scie</span>
-            <span><div class="dot" style="background: var(--wave-fm);"></div> FM</span>
+        <div class="slider-group">
+            <label class="slider-label">Tune</label>
+            <input type="range" id="tuning" min="0.5" max="2.0" step="0.01" value="1.0">
         </div>
+        
+        <div class="slider-group">
+            <label class="slider-label">Filtre</label>
+            <input type="range" id="lpf" min="100" max="10000" step="10" value="5000">
+        </div>
+
+        <button id="reset-btn">Ranger</button>
     </div>
 
     <script>
+        // --- AUDIO ENGINE ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
-        
-        let masterGain;
-        let lpfFilter;
-        let compressor;
-        let delayNode;
-        let reverbNode;
-        let reverbGain;
-
-        const powerBtn = document.getElementById('power-btn');
-        const volSlider = document.getElementById('master-vol');
-        const tuningSlider = document.getElementById('tuning-octave');
-        const lpfSlider = document.getElementById('lpf-freq');
-        const resetButton = document.getElementById('reset-btn');
+        let masterGain, lpf, compressor;
         let isAudioOn = false;
 
-        const shardsList = [];
-        
-        const colorConfig = {
-            blue:   { color: 'rgba(0, 255, 255, 0.5)', type: 'square' }, 
-            green:  { color: 'rgba(50, 255, 50, 0.5)', type: 'sine' },
-            yellow: { color: 'rgba(255, 255, 0, 0.5)', type: 'triangle' },
-            magenta: { color: 'rgba(255, 0, 255, 0.5)', type: 'sawtooth' }, 
-            red:    { color: 'rgba(255, 50, 50, 0.6)', type: 'custom' }
-        };
-        const colors = ['blue', 'green', 'yellow', 'magenta', 'red']; 
+        // Elements DOM
+        const powerBtn = document.getElementById('power-btn');
+        const volSlider = document.getElementById('master-vol');
+        const tuneSlider = document.getElementById('tuning');
+        const lpfSlider = document.getElementById('lpf');
+        const resetBtn = document.getElementById('reset-btn');
+        const palette = document.getElementById('palette-area');
+        const lightbox = document.getElementById('lightbox');
 
-        // --- 1. CONFIGURATION AUDIO MASTER ---
+        const shards = [];
+        const colors = [
+            { c: 'cyan', type: 'square' },
+            { c: 'lime', type: 'sine' },
+            { c: 'yellow', type: 'triangle' },
+            { c: 'magenta', type: 'sawtooth' }
+        ];
 
-        async function initAudioEngine() {
-            if (!audioCtx) {
-                audioCtx = new AudioContext();
+        // 1. Initialisation Audio
+        async function initAudio() {
+            if(audioCtx) return;
+            audioCtx = new AudioContext();
+            
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = parseFloat(volSlider.value);
+            
+            lpf = audioCtx.createBiquadFilter();
+            lpf.type = 'lowpass';
+            lpf.frequency.value = parseFloat(lpfSlider.value);
 
-                masterGain = audioCtx.createGain();
-                masterGain.gain.value = parseFloat(volSlider.value); 
+            compressor = audioCtx.createDynamicsCompressor();
 
-                lpfFilter = audioCtx.createBiquadFilter();
-                lpfFilter.type = 'lowpass';
-                lpfFilter.frequency.value = parseFloat(lpfSlider.value); 
-                lpfFilter.Q.value = 1;
-
-                compressor = audioCtx.createDynamicsCompressor();
-                compressor.threshold.value = -20;
-                compressor.ratio.value = 12;
-
-                delayNode = audioCtx.createDelay();
-                delayNode.delayTime.value = 0.4;
-                const delayFeedback = audioCtx.createGain();
-                delayFeedback.gain.value = 0.4;
-                delayNode.connect(delayFeedback);
-                delayFeedback.connect(delayNode);
-
-                reverbNode = audioCtx.createConvolver();
-                reverbNode.buffer = await createReverbBuffer();
-                
-                reverbGain = audioCtx.createGain();
-                reverbGain.gain.value = 0.8; 
-
-                // Routage
-                masterGain.connect(lpfFilter);
-                
-                masterGain.connect(delayNode);
-                delayNode.connect(lpfFilter);
-
-                masterGain.connect(reverbNode);
-                reverbNode.connect(reverbGain);
-                reverbGain.connect(lpfFilter);
-
-                lpfFilter.connect(compressor);
-                compressor.connect(audioCtx.destination);
-            }
+            // Chain: Master -> LPF -> Compressor -> Out
+            masterGain.connect(lpf);
+            lpf.connect(compressor);
+            compressor.connect(audioCtx.destination);
         }
 
-        async function createReverbBuffer() {
-            let length = audioCtx.sampleRate * 4;
-            let decay = 3.0;
-            let buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
-            for (let c = 0; c < 2; c++) {
-                let d = buffer.getChannelData(c);
-                for (let i = 0; i < length; i++) {
-                    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
-                }
-            }
-            return buffer;
-        }
-
-        // --- GESTION DES CONTROLES ---
-
-        powerBtn.addEventListener('click', async (e) => {
-            e.preventDefault(); // Pour tactile
-            if (!audioCtx) await initAudioEngine();
-            if (audioCtx.state === 'suspended') {
+        // 2. Gestion des Boutons / Sliders (Events standards)
+        powerBtn.addEventListener('click', async () => {
+            if(!audioCtx) await initAudio();
+            
+            if(audioCtx.state === 'suspended') {
                 await audioCtx.resume();
                 isAudioOn = true;
+                powerBtn.textContent = "ON";
                 powerBtn.classList.add('is-on');
             } else {
                 await audioCtx.suspend();
                 isAudioOn = false;
+                powerBtn.textContent = "OFF";
                 powerBtn.classList.remove('is-on');
             }
         });
 
-        // Event listeners optimisés pour mobile
-        ['input', 'change'].forEach(evt => {
-            volSlider.addEventListener(evt, (e) => {
-                if(masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
-            });
-            lpfSlider.addEventListener(evt, (e) => {
-                if(lpfFilter) lpfFilter.frequency.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
-            });
+        // Mise à jour audio en temps réel
+        volSlider.addEventListener('input', e => {
+            if(masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
+        });
+        lpfSlider.addEventListener('input', e => {
+            if(lpf) lpf.frequency.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            shards.forEach(s => s.resetPosition());
         });
 
-        resetButton.addEventListener('click', () => {
-            shardsList.forEach(shard => shard.resetPosition());
-        });
-
-
-        // --- 2. LOGIQUE DES PIÈCES (MOBILE FRIENDLY) ---
-
-        const palette = document.getElementById('palette-area');
-        const lightbox = document.getElementById('lightbox');
-
-        class SynthShard {
-            constructor(colorType) {
-                this.colorType = colorType;
-                this.config = colorConfig[colorType];
-                this.element = document.createElement('div');
-                this.width = Math.random() * 40 + 40; // Un peu plus petit pour mobile
-                this.height = Math.random() * 40 + 40;
-                
+        // 3. CLASSE PIÈCE DE VERRE (SHARD)
+        class Shard {
+            constructor(config) {
+                this.config = config;
+                this.el = document.createElement('div');
                 this.osc = null;
-                this.modulator = null;
                 this.gain = null;
                 this.isPlaying = false;
-
-                this.initVisuals();
-                this.initDrag();
                 
-                // Petit délai pour laisser le layout se faire
-                setTimeout(() => this.resetPosition(true), 100);
-            }
-
-            initVisuals() {
-                this.element.classList.add('shard');
-                this.element.style.width = this.width + 'px';
-                this.element.style.height = this.height + 'px';
-                this.element.style.backgroundColor = this.config.color; 
-                this.element.style.color = this.config.color; 
-
-                const pts = [];
-                const numPoints = 4 + Math.floor(Math.random() * 4);
-                for(let i=0; i<numPoints; i++) {
-                    const angle = (i / numPoints) * Math.PI * 2;
-                    const r = 30 + Math.random() * 20;
-                    const x = 50 + Math.cos(angle) * r;
-                    const y = 50 + Math.sin(angle) * r;
-                    pts.push(`${x}% ${y}%`);
+                // Création Visuelle
+                this.width = 50 + Math.random() * 30;
+                this.height = 50 + Math.random() * 30;
+                this.el.classList.add('shard');
+                this.el.style.width = this.width + 'px';
+                this.el.style.height = this.height + 'px';
+                this.el.style.background = config.c;
+                
+                // Forme aléatoire CSS clip-path
+                const p = [];
+                for(let i=0; i<4; i++) {
+                    p.push(`${Math.random()*100}% ${Math.random()*100}%`);
                 }
-                this.element.style.clipPath = `polygon(${pts.join(', ')})`;
-                document.body.appendChild(this.element);
+                this.el.style.clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)`; // Forme simple rect pour faciliter le touch
+                this.el.style.clipPath = `polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`; // Losange
+                
+                document.body.appendChild(this.el);
+                
+                this.resetPosition(true);
+                this.initInteraction();
             }
 
-            resetPosition(initial = false) {
-                const rect = palette.getBoundingClientRect();
-                // Marges de sécurité pour rester dans la palette
-                const maxX = rect.width - this.width;
-                const maxY = rect.height - this.height;
-                
-                const x = rect.left + Math.random() * Math.max(0, maxX);
-                const y = rect.top + Math.random() * Math.max(0, maxY);
-                
-                this.element.style.left = x + 'px';
-                this.element.style.top = y + 'px';
-                if (!initial) this.stopSound();
+            resetPosition(firstTime) {
+                // On met dans la palette (en bas)
+                const r = palette.getBoundingClientRect();
+                const x = r.left + Math.random() * (r.width - this.width);
+                const y = r.top + Math.random() * (r.height - this.height);
+                this.el.style.left = x + 'px';
+                this.el.style.top = y + 'px';
+                this.stop();
             }
 
-            startSound() {
-                if(this.isPlaying || !audioCtx || !isAudioOn) return;
-
+            // --- AUDIO LOGIC ---
+            start() {
+                if(this.isPlaying || !isAudioOn) return;
+                this.osc = audioCtx.createOscillator();
+                this.osc.type = this.config.type;
                 this.gain = audioCtx.createGain();
                 this.gain.gain.value = 0;
-
-                if (this.colorType === 'red') {
-                    this.osc = audioCtx.createOscillator();
-                    this.osc.type = 'sawtooth';
-                    this.modulator = audioCtx.createOscillator();
-                    this.modulator.type = 'square';
-                    this.modulator.frequency.value = 50;
-                    const modGain = audioCtx.createGain();
-                    modGain.gain.value = 500;
-                    this.modulator.connect(modGain);
-                    modGain.connect(this.osc.frequency);
-                    this.modulator.start();
-                } else {
-                    this.osc = audioCtx.createOscillator();
-                    this.osc.type = this.config.type;
-                }
-
+                
                 this.osc.connect(this.gain);
                 this.gain.connect(masterGain);
-
                 this.osc.start();
                 this.isPlaying = true;
-                this.element.classList.add('active-shard');
+                this.el.classList.add('active-shard');
             }
 
-            updateAudio(relX, relY) {
+            update(rx, ry) {
                 if(!this.isPlaying) return;
                 const now = audioCtx.currentTime;
-
-                let vol = relY * relY; 
-                if(this.colorType === 'blue') vol *= 0.6; 
-                this.gain.gain.setTargetAtTime(vol, now, 0.1);
-
-                const minFreq = 100;
-                const maxFreq = 1000;
-                const tuningFactor = parseFloat(tuningSlider.value);
-                const baseFrequency = minFreq + (relX * (maxFreq - minFreq));
-                const finalFrequency = baseFrequency * tuningFactor;
-
-                this.osc.frequency.setTargetAtTime(finalFrequency, now, 0.1);
-
-                if (this.colorType === 'red' && this.modulator) {
-                    this.modulator.frequency.setTargetAtTime(relY * 100, now, 0.1);
-                }
+                // X = Freq (200Hz - 800Hz) * Tune
+                const tune = parseFloat(tuneSlider.value);
+                const freq = (200 + rx * 600) * tune;
+                this.osc.frequency.setTargetAtTime(freq, now, 0.1);
+                
+                // Y = Volume
+                this.gain.gain.setTargetAtTime(ry, now, 0.1);
             }
 
-            stopSound() {
+            stop() {
                 if(!this.isPlaying) return;
-                const now = audioCtx.currentTime;
-                // Fade out rapide
-                this.gain.gain.setTargetAtTime(0, now, 0.2);
-                
-                // Cleanup
-                const oscToStop = this.osc;
-                const modToStop = this.modulator;
-                const gainToDisconnect = this.gain;
-                
-                setTimeout(() => {
-                    if(oscToStop) oscToStop.stop();
-                    if(modToStop) modToStop.stop();
-                    if(gainToDisconnect) gainToDisconnect.disconnect();
-                }, 350);
-
+                const g = this.gain;
+                const o = this.osc;
+                g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                setTimeout(() => { o.stop(); o.disconnect(); g.disconnect(); }, 200);
                 this.isPlaying = false;
-                this.element.classList.remove('active-shard');
-                this.osc = null;
-                this.modulator = null;
-                this.gain = null;
+                this.el.classList.remove('active-shard');
             }
 
-            // --- GESTION TACTILE ET SOURIS UNIFIÉE ---
-            initDrag() {
+            // --- INTERACTION TACTILE & SOURIS ---
+            initInteraction() {
                 let isDragging = false;
-                let offset = {x:0, y:0};
+                let offset = { x: 0, y: 0 };
 
-                const startDrag = (clientX, clientY) => {
+                // Fonction universelle de début
+                const onStart = (clientX, clientY) => {
                     isDragging = true;
-                    const b = this.element.getBoundingClientRect();
-                    offset = { x: clientX - b.left, y: clientY - b.top };
-                    // Amener la pièce au premier plan
-                    this.element.style.zIndex = 1000;
+                    const rect = this.el.getBoundingClientRect();
+                    offset.x = clientX - rect.left;
+                    offset.y = clientY - rect.top;
+                    this.el.style.zIndex = 1000; // Au premier plan
                 };
 
-                const moveDrag = (clientX, clientY) => {
-                    if (!isDragging) return;
-                    this.element.style.left = (clientX - offset.x) + 'px';
-                    this.element.style.top = (clientY - offset.y) + 'px';
-                    this.checkZone();
-                };
-
-                const endDrag = () => {
+                // Fonction universelle de mouvement
+                const onMove = (clientX, clientY) => {
                     if(!isDragging) return;
-                    isDragging = false;
-                    this.element.style.zIndex = ''; // Reset z-index
-                    this.checkZone();
+                    
+                    // Positionner l'élément
+                    const newX = clientX - offset.x;
+                    const newY = clientY - offset.y;
+                    this.el.style.left = newX + 'px';
+                    this.el.style.top = newY + 'px';
+
+                    // Vérifier si on est dans la Lightbox
+                    const box = lightbox.getBoundingClientRect();
+                    const center = { x: newX + this.width/2, y: newY + this.height/2 };
+                    
+                    const inside = (
+                        center.x > box.left && 
+                        center.x < box.right && 
+                        center.y > box.top && 
+                        center.y < box.bottom
+                    );
+
+                    if(inside && isAudioOn) {
+                        if(!this.isPlaying) this.start();
+                        // Calculs normalisés (0.0 à 1.0)
+                        const rx = (center.x - box.left) / box.width;
+                        const ry = 1 - ((center.y - box.top) / box.height); // Y inversé (haut = fort)
+                        this.update(rx, Math.max(0, Math.min(1, ry)));
+                    } else {
+                        this.stop();
+                    }
                 };
 
-                // Écouteurs Souris
-                this.element.addEventListener('mousedown', (e) => {
+                const onEnd = () => {
+                    isDragging = false;
+                    this.el.style.zIndex = '';
+                    // Si on relâche hors de la zone et que le son joue, on coupe
+                    if(this.isPlaying) {
+                        // Optionnel : on pourrait laisser jouer ou couper. Ici on coupe.
+                        this.stop(); 
+                    }
+                };
+
+                // --- Écouteurs SOURIS ---
+                this.el.addEventListener('mousedown', e => {
                     if(e.button !== 0) return;
-                    startDrag(e.clientX, e.clientY);
+                    onStart(e.clientX, e.clientY);
                 });
-                window.addEventListener('mousemove', (e) => {
-                    e.preventDefault();
-                    moveDrag(e.clientX, e.clientY);
+                window.addEventListener('mousemove', e => {
+                    if(isDragging) {
+                        e.preventDefault(); // Empêche sélection texte
+                        onMove(e.clientX, e.clientY);
+                    }
                 });
-                window.addEventListener('mouseup', endDrag);
+                window.addEventListener('mouseup', onEnd);
 
-                // Écouteurs Tactiles (Mobile)
-                this.element.addEventListener('touchstart', (e) => {
+                // --- Écouteurs TACTILES (Mobile) ---
+                // passive: false est OBLIGATOIRE pour preventDefault()
+                this.el.addEventListener('touchstart', e => {
                     e.preventDefault(); // Empêche le scroll quand on touche une pièce
-                    const touch = e.touches[0];
-                    startDrag(touch.clientX, touch.clientY);
+                    const t = e.touches[0];
+                    onStart(t.clientX, t.clientY);
                 }, { passive: false });
 
-                window.addEventListener('touchmove', (e) => {
-                    if(isDragging) e.preventDefault(); // Empêche le scroll global pendant le drag
-                    const touch = e.touches[0];
-                    moveDrag(touch.clientX, touch.clientY);
+                window.addEventListener('touchmove', e => {
+                    if(isDragging) {
+                        e.preventDefault(); // Empêche le scroll de la page PENDANT le drag
+                        const t = e.touches[0];
+                        onMove(t.clientX, t.clientY);
+                    }
                 }, { passive: false });
 
-                window.addEventListener('touchend', endDrag);
-            }
-
-            checkZone() {
-                const box = lightbox.getBoundingClientRect();
-                const shard = this.element.getBoundingClientRect();
-                const cx = shard.left + shard.width/2;
-                const cy = shard.top + shard.height/2;
-                const inside = cx > box.left && cx < box.right && cy > box.top && cy < box.bottom;
-
-                if (inside && isAudioOn) {
-                    if (!this.isPlaying) this.startSound();
-                    const rx = (cx - box.left) / box.width;
-                    const ry = 1 - ((cy - box.top) / box.height);
-                    this.updateAudio(rx, Math.max(0, Math.min(1, ry)));
-                } else {
-                    if (this.isPlaying) this.stopSound();
-                }
+                window.addEventListener('touchend', onEnd);
             }
         }
 
+        // Démarrage
         window.onload = () => {
+            // Créer 2 pièces de chaque couleur
             colors.forEach(c => {
-                // 6 éclats par couleur au lieu de 8 pour alléger sur mobile
-                for(let i=0; i<6; i++) shardsList.push(new SynthShard(c));
-            });
-            
-            // Gestion du redimensionnement de fenêtre
-            window.addEventListener('resize', () => {
-               // Optionnel: Réinitialiser si changement radical d'orientation
-               // shardsList.forEach(s => s.resetPosition());
+                shards.push(new Shard(c));
+                shards.push(new Shard(c));
             });
         };
 
