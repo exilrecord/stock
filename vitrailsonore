@@ -2,8 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vitrail Sonore - Synth Final avec LPF</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vitrail Sonore Mobile - Synth Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
@@ -11,12 +11,11 @@
             --neon-blue: #00f7ff;
             --neon-blue-dim: #005a5e;
             --dark-metal: #222;
-            /* Couleurs pour les ondes */
-            --wave-sine: rgba(50, 255, 50, 0.5);    /* Vert */
-            --wave-square: rgba(0, 255, 255, 0.5);  /* Cyan */
-            --wave-triangle: rgba(255, 255, 0, 0.5); /* Jaune */
-            --wave-saw: rgba(255, 0, 255, 0.5);    /* Magenta */
-            --wave-fm: rgba(255, 50, 50, 0.6);      /* Rouge */
+            --wave-sine: rgba(50, 255, 50, 0.5);
+            --wave-square: rgba(0, 255, 255, 0.5);
+            --wave-triangle: rgba(255, 255, 0, 0.5);
+            --wave-saw: rgba(255, 0, 255, 0.5);
+            --wave-fm: rgba(255, 50, 50, 0.6);
         }
 
         body {
@@ -29,6 +28,8 @@
             font-family: 'Cinzel', serif;
             overflow: hidden;
             user-select: none;
+            -webkit-user-select: none; /* Safari mobile */
+            touch-action: none; /* Empêche les gestes natifs du navigateur */
         }
 
         /* --- LAYOUT --- */
@@ -36,7 +37,8 @@
             display: flex;
             flex: 1;
             width: 100%;
-            height: 85vh;
+            height: 80vh; /* Un peu moins pour laisser place aux contrôles */
+            position: relative;
         }
 
         #stage-area {
@@ -45,11 +47,16 @@
             justify-content: center;
             align-items: center;
             background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            overflow: hidden;
+            position: relative;
         }
 
+        /* LIGHTBOX RESPONSIVE */
         #lightbox {
-            width: 600px;
-            height: 600px;
+            width: 80vmin; /* S'adapte au plus petit côté de l'écran */
+            height: 80vmin;
+            max-width: 600px;
+            max-height: 600px;
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -72,11 +79,12 @@
         #lightbox::after {
             content: 'X: Fréquence | Y: Volume';
             position: absolute;
-            bottom: -30px; left: 50%;
+            bottom: -25px; left: 50%;
             transform: translateX(-50%);
             color: #555;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            white-space: nowrap;
         }
 
         #palette-area {
@@ -84,6 +92,7 @@
             background: rgba(10, 10, 10, 0.8);
             border-left: 1px solid #333;
             position: relative;
+            overflow: hidden;
         }
 
         /* --- PIÈCES (SHARDS) --- */
@@ -93,7 +102,8 @@
             backdrop-filter: blur(4px);
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             transition: transform 0.1s;
-            mix-blend-mode: screen; 
+            mix-blend-mode: screen;
+            touch-action: none; /* Crucial pour mobile : empêche le scroll */
         }
         
         .shard.active-shard {
@@ -104,26 +114,22 @@
 
         /* --- CONTROLS AREA --- */
         #controls-area {
-            height: 15vh;
+            height: 20vh;
             background: #080808;
             border-top: 1px solid #222;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 40px;
+            padding: 0 20px;
             z-index: 100;
+            overflow-x: auto; /* Permet de scroller les contrôles si l'écran est petit */
         }
 
         .control-group-left {
             display: flex;
             align-items: center;
-            gap: 30px;
-        }
-        
-        .control-group-right {
-            display: flex;
-            align-items: center;
             gap: 20px;
+            flex-wrap: nowrap;
         }
 
         /* Bouton Reset */
@@ -131,17 +137,11 @@
             background: transparent;
             color: #ccc;
             border: 1px solid #444;
-            padding: 10px 15px;
-            font-size: 0.8rem;
+            padding: 8px 10px;
+            font-size: 0.7rem;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: 0.2s;
             font-family: 'Cinzel', serif;
-        }
-        #reset-btn:hover {
-            background: #333;
-            color: #fff;
         }
 
         /* --- BOUTON POWER LUMINEUX --- */
@@ -149,72 +149,92 @@
             background: var(--dark-metal);
             border: 3px solid #333;
             border-radius: 50%;
-            width: 70px; height: 70px;
+            width: 60px; height: 60px;
+            flex-shrink: 0; /* Empêche le bouton de s'écraser */
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; transition: all 0.3s ease-in-out;
             box-shadow: inset 0 3px 8px rgba(0,0,0,0.8), 0 2px 3px rgba(255,255,255,0.05);
             padding: 0; position: relative; overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
-        #power-btn svg { fill: #444; width: 36px; height: 36px; transition: all 0.3s ease-in-out; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.1)); }
+        #power-btn svg { fill: #444; width: 30px; height: 30px; transition: all 0.3s ease-in-out; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.1)); }
         #power-btn.is-on {
             background: radial-gradient(circle at center, var(--neon-blue) 0%, var(--neon-blue-dim) 70%);
             border-color: var(--neon-blue);
             box-shadow: 0 0 25px var(--neon-blue), 0 0 50px var(--neon-blue-dim), inset 0 0 15px rgba(255,255,255,0.5);
         }
         #power-btn.is-on svg { fill: #fff; filter: drop-shadow(0 0 8px var(--neon-blue)); }
-        #power-btn.is-on::after {
-            content: ''; position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
-            background: radial-gradient(circle, transparent 40%, var(--neon-blue) 100%);
-            opacity: 0.2; animation: pulse-light 2s infinite alternate;
-        }
-        @keyframes pulse-light {
-            from { opacity: 0.1; transform: scale(1); }
-            to { opacity: 0.3; transform: scale(1.1); }
-        }
 
-        /* --- POTENTIOMÈTRES (Sliders) --- */
+        /* --- POTENTIOMÈTRES --- */
         .volume-control {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 5px;
+            min-width: 80px;
         }
         .volume-label {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: #888;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             text-transform: uppercase;
+            text-align: center;
         }
         input[type=range] {
-            width: 100px;
+            width: 80px;
             cursor: pointer;
             accent-color: var(--neon-blue);
         }
 
-        /* Légende (Avec couleur d'identification) */
+        /* Légende */
         .legend {
-            display: flex;
-            gap: 15px;
-            font-size: 0.75rem;
+            display: none; /* Caché sur mobile par défaut pour gagner de la place */
+            gap: 10px;
+            font-size: 0.7rem;
             color: #ccc;
             flex-direction: column;
             padding: 5px 10px;
             border-left: 1px solid #222;
         }
-        .legend span { 
-            display: flex; 
-            align-items: center; 
-            gap: 5px; 
-            font-weight: 400;
-        }
-        .dot { 
-            width: 8px; 
-            height: 8px; 
-            border-radius: 50%; 
-            display: inline-block; 
-            border: 1px solid #777;
+        .legend span { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #777; }
+
+        /* --- MEDIA QUERIES MOBILE --- */
+        @media (min-width: 769px) {
+            .legend { display: flex; }
         }
 
+        @media (max-width: 768px) {
+            #main-container {
+                flex-direction: column; /* Vertical layout */
+            }
+            #stage-area {
+                flex: 2; /* Plus d'espace pour le vitrail */
+                width: 100%;
+            }
+            #palette-area {
+                flex: 1; /* Zone de stockage en bas */
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid #333;
+                background: #0f0f0f;
+            }
+            #controls-area {
+                padding: 10px;
+                height: auto;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .control-group-left {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+            }
+            #reset-btn {
+                padding: 10px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -223,7 +243,8 @@
         <div id="stage-area">
             <div id="lightbox"></div>
         </div>
-        <div id="palette-area"></div>
+        <div id="palette-area">
+            </div>
     </div>
 
     <div id="controls-area">
@@ -234,32 +255,31 @@
                 </svg>
             </button>
             
-            <button id="reset-btn">Réinitialiser</button>
+            <button id="reset-btn">Reset</button>
 
             <div class="volume-control">
-                <label for="master-vol" class="volume-label">Volume</label>
+                <label for="master-vol" class="volume-label">Vol</label>
                 <input type="range" id="master-vol" min="0" max="1" step="0.01" value="0.4">
             </div>
 
             <div class="volume-control">
-                <label for="tuning-octave" class="volume-label">Tuning</label>
+                <label for="tuning-octave" class="volume-label">Tune</label>
                 <input type="range" id="tuning-octave" min="0.5" max="2.0" step="0.01" value="1.0">
             </div>
 
             <div class="volume-control">
-                <label for="lpf-freq" class="volume-label">Coupe Hautes Fréq.</label>
+                <label for="lpf-freq" class="volume-label">Filtre</label>
                 <input type="range" id="lpf-freq" min="20" max="10000" step="1" value="10000">
             </div>
-
         </div>
         
         <div class="legend">
-            <p style="font-size:0.8rem; margin:0 0 5px 0; color:#aaa; font-weight:700;">Types d'Ondes / Identification</p>
-            <span><div class="dot" style="background: var(--wave-square);"></div> Bleu (Carré)</span>
-            <span><div class="dot" style="background: var(--wave-sine);"></div> Vert (Sinus)</span>
-            <span><div class="dot" style="background: var(--wave-triangle);"></div> Jaune (Triangle)</span>
-            <span><div class="dot" style="background: var(--wave-saw);"></div> Magenta (Dent de Scie)</span>
-            <span><div class="dot" style="background: var(--wave-fm);"></div> Rouge (FM Bizarre)</span>
+            <p style="margin:0 0 5px 0; font-weight:700; color:#fff;">Légende</p>
+            <span><div class="dot" style="background: var(--wave-square);"></div> Carré</span>
+            <span><div class="dot" style="background: var(--wave-sine);"></div> Sinus</span>
+            <span><div class="dot" style="background: var(--wave-triangle);"></div> Triangle</span>
+            <span><div class="dot" style="background: var(--wave-saw);"></div> Scie</span>
+            <span><div class="dot" style="background: var(--wave-fm);"></div> FM</span>
         </div>
     </div>
 
@@ -268,16 +288,16 @@
         let audioCtx;
         
         let masterGain;
-        let lpfFilter; // NOUVEAU
+        let lpfFilter;
         let compressor;
         let delayNode;
         let reverbNode;
-        let reverbGain; // Reste pour le volume Wet fixe
+        let reverbGain;
 
         const powerBtn = document.getElementById('power-btn');
         const volSlider = document.getElementById('master-vol');
         const tuningSlider = document.getElementById('tuning-octave');
-        const lpfSlider = document.getElementById('lpf-freq'); // NOUVEAU
+        const lpfSlider = document.getElementById('lpf-freq');
         const resetButton = document.getElementById('reset-btn');
         let isAudioOn = false;
 
@@ -292,30 +312,24 @@
         };
         const colors = ['blue', 'green', 'yellow', 'magenta', 'red']; 
 
-
         // --- 1. CONFIGURATION AUDIO MASTER ---
 
         async function initAudioEngine() {
             if (!audioCtx) {
                 audioCtx = new AudioContext();
 
-                // 1. Gain Principal (Volume)
                 masterGain = audioCtx.createGain();
                 masterGain.gain.value = parseFloat(volSlider.value); 
 
-                // 2. Filtre Passe-Bas (LPF) - NOUVEAU
                 lpfFilter = audioCtx.createBiquadFilter();
                 lpfFilter.type = 'lowpass';
-                // La fréquence est initialisée sur la valeur max du slider (10000 Hz)
                 lpfFilter.frequency.value = parseFloat(lpfSlider.value); 
-                lpfFilter.Q.value = 1; // Valeur Q par défaut
+                lpfFilter.Q.value = 1;
 
-                // 3. Compresseur
                 compressor = audioCtx.createDynamicsCompressor();
                 compressor.threshold.value = -20;
                 compressor.ratio.value = 12;
 
-                // 4. Délai
                 delayNode = audioCtx.createDelay();
                 delayNode.delayTime.value = 0.4;
                 const delayFeedback = audioCtx.createGain();
@@ -323,33 +337,22 @@
                 delayNode.connect(delayFeedback);
                 delayFeedback.connect(delayNode);
 
-                // 5. Réverbération (Convolver)
                 reverbNode = audioCtx.createConvolver();
                 reverbNode.buffer = await createReverbBuffer();
                 
-                // 6. Gain Reverb Wet (Fixé à 0.8)
                 reverbGain = audioCtx.createGain();
                 reverbGain.gain.value = 0.8; 
 
-                // --- ROUTAGE MIS À JOUR ---
-                // Les sources vont vers masterGain.
-                // masterGain se divise en 3 : Dry, Delay, Reverb.
-                // Les trois branches convergent vers le LPF.
-                // LPF va vers Compressor, qui va vers la sortie.
-
-                // Branche Dry (Principal)
+                // Routage
                 masterGain.connect(lpfFilter);
                 
-                // Branche Delay
                 masterGain.connect(delayNode);
                 delayNode.connect(lpfFilter);
 
-                // Branche Reverb
                 masterGain.connect(reverbNode);
                 reverbNode.connect(reverbGain);
-                reverbGain.connect(lpfFilter); // Reverb wet entre dans le filtre
+                reverbGain.connect(lpfFilter);
 
-                // Final
                 lpfFilter.connect(compressor);
                 compressor.connect(audioCtx.destination);
             }
@@ -370,7 +373,8 @@
 
         // --- GESTION DES CONTROLES ---
 
-        powerBtn.addEventListener('click', async () => {
+        powerBtn.addEventListener('click', async (e) => {
+            e.preventDefault(); // Pour tactile
             if (!audioCtx) await initAudioEngine();
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
@@ -383,41 +387,33 @@
             }
         });
 
-        volSlider.addEventListener('input', (e) => {
-            if(masterGain) {
-                masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
-            }
+        // Event listeners optimisés pour mobile
+        ['input', 'change'].forEach(evt => {
+            volSlider.addEventListener(evt, (e) => {
+                if(masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.05);
+            });
+            lpfSlider.addEventListener(evt, (e) => {
+                if(lpfFilter) lpfFilter.frequency.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
+            });
         });
-        
-        // NOUVEAU : Contrôle du filtre passe-bas
-        lpfSlider.addEventListener('input', (e) => {
-            if(lpfFilter) {
-                const freq = parseFloat(e.target.value);
-                // Utilisation d'une petite rampe pour un changement plus fluide
-                lpfFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
-            }
-        });
-        
-        // Le slider reverb a été retiré, le gain reverbGain est fixé à 0.8.
-        
+
         resetButton.addEventListener('click', () => {
             shardsList.forEach(shard => shard.resetPosition());
         });
 
 
-        // --- 2. LOGIQUE DES PIÈCES (INCHANGÉE) ---
+        // --- 2. LOGIQUE DES PIÈCES (MOBILE FRIENDLY) ---
 
         const palette = document.getElementById('palette-area');
         const lightbox = document.getElementById('lightbox');
-
 
         class SynthShard {
             constructor(colorType) {
                 this.colorType = colorType;
                 this.config = colorConfig[colorType];
                 this.element = document.createElement('div');
-                this.width = Math.random() * 40 + 50; 
-                this.height = Math.random() * 40 + 50;
+                this.width = Math.random() * 40 + 40; // Un peu plus petit pour mobile
+                this.height = Math.random() * 40 + 40;
                 
                 this.osc = null;
                 this.modulator = null;
@@ -426,14 +422,15 @@
 
                 this.initVisuals();
                 this.initDrag();
-                this.resetPosition(true);
+                
+                // Petit délai pour laisser le layout se faire
+                setTimeout(() => this.resetPosition(true), 100);
             }
 
             initVisuals() {
                 this.element.classList.add('shard');
                 this.element.style.width = this.width + 'px';
                 this.element.style.height = this.height + 'px';
-                
                 this.element.style.backgroundColor = this.config.color; 
                 this.element.style.color = this.config.color; 
 
@@ -452,8 +449,13 @@
 
             resetPosition(initial = false) {
                 const rect = palette.getBoundingClientRect();
-                const x = rect.left + Math.random() * (rect.width - 80);
-                const y = rect.top + Math.random() * (rect.height - 80);
+                // Marges de sécurité pour rester dans la palette
+                const maxX = rect.width - this.width;
+                const maxY = rect.height - this.height;
+                
+                const x = rect.left + Math.random() * Math.max(0, maxX);
+                const y = rect.top + Math.random() * Math.max(0, maxY);
+                
                 this.element.style.left = x + 'px';
                 this.element.style.top = y + 'px';
                 if (!initial) this.stopSound();
@@ -493,17 +495,13 @@
                 if(!this.isPlaying) return;
                 const now = audioCtx.currentTime;
 
-                // Y = Volume
                 let vol = relY * relY; 
                 if(this.colorType === 'blue') vol *= 0.6; 
                 this.gain.gain.setTargetAtTime(vol, now, 0.1);
 
-                // X = Fréquence
                 const minFreq = 100;
                 const maxFreq = 1000;
-                
                 const tuningFactor = parseFloat(tuningSlider.value);
-
                 const baseFrequency = minFreq + (relX * (maxFreq - minFreq));
                 const finalFrequency = baseFrequency * tuningFactor;
 
@@ -517,37 +515,79 @@
             stopSound() {
                 if(!this.isPlaying) return;
                 const now = audioCtx.currentTime;
+                // Fade out rapide
                 this.gain.gain.setTargetAtTime(0, now, 0.2);
-                if(this.osc) this.osc.stop(now + 0.3);
-                if(this.modulator) this.modulator.stop(now + 0.3);
+                
+                // Cleanup
+                const oscToStop = this.osc;
+                const modToStop = this.modulator;
+                const gainToDisconnect = this.gain;
+                
                 setTimeout(() => {
-                    this.isPlaying = false;
-                    this.element.classList.remove('active-shard');
-                    this.osc = null;
+                    if(oscToStop) oscToStop.stop();
+                    if(modToStop) modToStop.stop();
+                    if(gainToDisconnect) gainToDisconnect.disconnect();
                 }, 350);
+
+                this.isPlaying = false;
+                this.element.classList.remove('active-shard');
+                this.osc = null;
+                this.modulator = null;
+                this.gain = null;
             }
 
-            // Drag and Drop (inchangé)
+            // --- GESTION TACTILE ET SOURIS UNIFIÉE ---
             initDrag() {
                 let isDragging = false;
                 let offset = {x:0, y:0};
-                this.element.addEventListener('mousedown', (e) => {
-                    if(e.button !== 0) return;
+
+                const startDrag = (clientX, clientY) => {
                     isDragging = true;
                     const b = this.element.getBoundingClientRect();
-                    offset = { x: e.clientX - b.left, y: e.clientY - b.top };
+                    offset = { x: clientX - b.left, y: clientY - b.top };
+                    // Amener la pièce au premier plan
+                    this.element.style.zIndex = 1000;
+                };
+
+                const moveDrag = (clientX, clientY) => {
+                    if (!isDragging) return;
+                    this.element.style.left = (clientX - offset.x) + 'px';
+                    this.element.style.top = (clientY - offset.y) + 'px';
+                    this.checkZone();
+                };
+
+                const endDrag = () => {
+                    if(!isDragging) return;
+                    isDragging = false;
+                    this.element.style.zIndex = ''; // Reset z-index
+                    this.checkZone();
+                };
+
+                // Écouteurs Souris
+                this.element.addEventListener('mousedown', (e) => {
+                    if(e.button !== 0) return;
+                    startDrag(e.clientX, e.clientY);
                 });
                 window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
                     e.preventDefault();
-                    this.element.style.left = (e.clientX - offset.x) + 'px';
-                    this.element.style.top = (e.clientY - offset.y) + 'px';
-                    this.checkZone();
+                    moveDrag(e.clientX, e.clientY);
                 });
-                window.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    this.checkZone();
-                });
+                window.addEventListener('mouseup', endDrag);
+
+                // Écouteurs Tactiles (Mobile)
+                this.element.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // Empêche le scroll quand on touche une pièce
+                    const touch = e.touches[0];
+                    startDrag(touch.clientX, touch.clientY);
+                }, { passive: false });
+
+                window.addEventListener('touchmove', (e) => {
+                    if(isDragging) e.preventDefault(); // Empêche le scroll global pendant le drag
+                    const touch = e.touches[0];
+                    moveDrag(touch.clientX, touch.clientY);
+                }, { passive: false });
+
+                window.addEventListener('touchend', endDrag);
             }
 
             checkZone() {
@@ -570,7 +610,14 @@
 
         window.onload = () => {
             colors.forEach(c => {
-                for(let i=0; i<8; i++) shardsList.push(new SynthShard(c));
+                // 6 éclats par couleur au lieu de 8 pour alléger sur mobile
+                for(let i=0; i<6; i++) shardsList.push(new SynthShard(c));
+            });
+            
+            // Gestion du redimensionnement de fenêtre
+            window.addEventListener('resize', () => {
+               // Optionnel: Réinitialiser si changement radical d'orientation
+               // shardsList.forEach(s => s.resetPosition());
             });
         };
 
